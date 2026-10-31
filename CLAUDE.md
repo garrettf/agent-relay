@@ -1,14 +1,20 @@
 # Developing agent-relay
 
-- The mod (`claude-plugin/`) is hot-reloaded from `~/.claude/dev-mods/<session>/codex-relay`, a symlink to `claude-plugin/`.
-- **Force a reload mid-turn:** after editing, call any tool the mod registers (`codex_list` is the cheap one). The engine reloads a mod edited during the turn before running one of its tools. Without that it reloads only at turn end.
-- **Current bridge socket:** `jq -r .sock ~/.agent-relay/sessions/<session-id>.json`. The newest bridge owns that file. Every reload starts a new bridge with a new socket.
-- **Bridge traces** (`trace()` in the mod): `curl -s --unix-socket <sock> 'http://relay/events?since=0&kind=log&timeoutMs=0'`.
-- **Fake a Codex app thread messaging Claude:** `curl --unix-socket <sock> -X POST http://relay/inbound -d '{"fromThread":"t1","fromName":"x","text":"hi","awaitReply":true}'`. It holds until Claude replies to `codex:t1`. A reload drops it (exit 52).
-- **Reload semantics this design depends on:**
-  - The old module (and its bridge) lives on until its hooks in flight return.
-  - A `turn.step` in flight is never cut, so a step that waits keeps an agent on the old module.
-  - A `tool.call` in flight is cancelled at the next reload.
-  - That's why the inbox waits in a tool call (`codex_inbox_wait`), not in its step.
-- Type-check: `npx -y -p typescript@5.6.3 tsc -p <tsconfig naming claude-plugin/.claude-plugin/types and claude-plugin/hooks>`. Validate: `claude plugin validate claude-plugin`.
+- **Mod** (`claude-plugin/hooks/register.tsx`): hot-reloaded from `~/.claude/dev-mods/<session>/codex-relay`, a symlink to `claude-plugin/`.
+  - A mod edited mid-turn reloads before the next call to one of its tools (`codex_watch` is the only one, so it's easiest to let the turn end).
+  - **Hot reload does not start or restart the plugin's MCP server** (`.mcp.json`). A new Codex tool or bridge change needs a new session.
+- **Global install:** the user scope install copies `claude-plugin/` into `~/.claude/plugins/cache/agent-relay/codex-relay/<version>/`.
+  - To ship a change: bump `version` in `.claude-plugin/plugin.json`, delete `codex-thread-bridge/.venv` (don't copy it), then run `claude plugin marketplace update agent-relay && claude plugin update codex-relay@agent-relay --scope user`, then restart the sessions.
+- **Bridge** (`claude-plugin/codex-thread-bridge`, vendored fork, see README):
+  - Tests: `uv run --frozen pytest -q --deselect tests/test_proxy_transport.py`. The proxy tests fail on macOS: the AF_UNIX path is too long.
+  - Lint: `uv run --frozen ruff check src tests`.
+  - Probe the live daemon from a script with `Bridge` + `EventsServer` (see `turns.py` and `events.py`).
+  - Its MCP tools are named `mcp__plugin_codex-relay_codex__*`.
+  - Wait on a turn by hand: `curl --unix-socket ~/.local/state/codex-thread-bridge/run/<pid>.sock 'http://codex/wait?turns=<thread>:<turn>&timeoutMs=60000'`.
+- **Mod constraints this design depends on:**
+  - Only an agent spawned via `$.agent.spawn` from inside a live hook frame gets the mod's `turn.step`, so watchers are spawned in the dispatching tool.call hook.
+  - A plugin-spawned agent's first run sends main no task notification, so the watcher reports by SendMessage.
+  - A `tool.call` in flight is cancelled at a reload, so a watcher waits in a tool call (`codex_watch`), and its next step sees the error and waits again.
+- Type-check: `npx -y -p typescript@5.6.3 tsc -p claude-plugin`. Validate: `claude plugin validate claude-plugin`.
+- `claude -p` from this shell has no valid auth (OAuth expired), so test end to end in a Desktop session.
 - Test Codex spawns on luna models (`gpt-6-luna`, `gpt-5.6-luna`) at low effort.

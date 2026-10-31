@@ -1,65 +1,9 @@
 {
   "name": "codex-relay",
-  "version": "0.1.0",
-  "description": "Run OpenAI Codex threads as Claude subagents (any model + effort) and let Claude and Codex agents message each other.",
+  "version": "0.2.0",
+  "description": "Run OpenAI Codex threads (any model + effort) from Claude via a bundled codex-thread-bridge MCP server, with a running-task UI, a Codex app deeplink, and the final answer messaged back when each turn ends.",
   "author": {
     "name": "Garrett Fidalgo"
   },
-  "types": "./types/index.d.ts",
-  "userConfig": {
-    "defaultModel": {
-      "type": "string",
-      "title": "Default Codex model",
-      "description": "Model for Codex subagents when none is given; empty uses ~/.codex/config.toml.",
-      "default": ""
-    },
-    "defaultEffort": {
-      "type": "string",
-      "title": "Default reasoning effort",
-      "description": "Effort for Codex subagents when none is given; 'config' uses ~/.codex/config.toml.",
-      "default": "config",
-      "options": [
-        "config",
-        "low",
-        "medium",
-        "high",
-        "xhigh",
-        "max",
-        "ultra"
-      ]
-    },
-    "sandbox": {
-      "type": "string",
-      "title": "Default Codex sandbox",
-      "description": "Sandbox for Codex subagents when none is given.",
-      "default": "workspace-write",
-      "options": [
-        "read-only",
-        "workspace-write",
-        "danger-full-access"
-      ]
-    },
-    "transport": {
-      "type": "string",
-      "title": "App-server transport",
-      "description": "spawn: a private `codex app-server` per session. daemon: the shared local daemon (threads show in `codex agents`).",
-      "default": "spawn",
-      "options": [
-        "spawn",
-        "daemon"
-      ]
-    },
-    "nodePath": {
-      "type": "string",
-      "title": "Node binary",
-      "description": "Path to node for the bridge; empty resolves it from a login shell.",
-      "default": ""
-    },
-    "codexPath": {
-      "type": "string",
-      "title": "Codex binary",
-      "description": "Path to codex; empty resolves it from a login shell.",
-      "default": ""
-    }
-  }
+  "types": "./types/index.d.ts"
 }

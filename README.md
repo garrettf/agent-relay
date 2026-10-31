@@ -1,52 +1,34 @@
 # agent-relay
 
-Claude Code ⇄ OpenAI Codex, both directions.
+Claude Code → OpenAI Codex: Claude runs Codex threads on any model and effort, sees them running, and gets each turn's answer messaged back. It never impersonates the person.
 
-- **`claude-plugin/` — `codex-relay`** (Claude Code mod). Claude spawns Codex threads as real subagents on any Codex model + reasoning effort, messages them mid-turn, and gets messaged back.
-- **`codex-plugin/` — `claude-relay`** (Codex plugin). Any Codex thread (Codex app, CLI, IDE) can list running Claude sessions, message them, and block on Claude's reply.
+`claude-plugin/` is one Claude Code plugin, `codex-relay`, with two parts:
 
-## How it works
+- **`codex-thread-bridge/`** is the MCP server that does the Codex work. It's a vendored fork of [saidelike/codex-thread-bridge](https://github.com/saidelike/codex-thread-bridge) at `4b58215` (MIT).
+  - It drives the shared Codex App Server daemon (`$CODEX_HOME/app-server-control/app-server-control.sock`), so threads show in the Codex app.
+  - Its tools are `create_thread`, `send_message_to_thread`, `steer_thread`, `wait_thread`, `read_thread*`, `list_threads`, ….
+  - **Fork changes:**
+    - Waits are pushed by App Server's `turn/completed` instead of polling `thread/turns/list` (`turns.py`).
+    - Model family names resolve to the newest listed model: `luna` → `gpt-6-luna`.
+    - With `--events-socket`, a Unix-socket HTTP endpoint `GET /wait?turns=<thread>:<turn>,…` holds a request open until a turn ends (`events.py`). Each dispatching tool's result names that socket as `eventsSocket`.
+- **`hooks/register.tsx`** is the mod: UI and delivery.
+  - A band above the prompt lists each running Codex turn: model, effort, title, elapsed time, and an **Open in Codex** link (`codex://threads/<id>`). The status line shows the same.
+  - Each dispatched turn gets a watcher subagent, which shows as a running task. Its wait is a single `$.http.fetch` held open by the bridge's events socket. When the turn ends, it `SendMessage`s the dispatcher (main, or the subagent that dispatched it) Codex's final answer, which wakes an idle main.
+  - A prompt that names a Codex model ("kick off a luna medium subagent …") carries a note that routes it to `create_thread`, not the Agent tool.
 
 ```
-Claude session ─ codex-relay mod ─HTTP/UDS─► relay-bridge.mjs ─stdio JSON-RPC─► codex app-server
-   ▲   ▲            turn.step answered           │  ▲                               (subagent threads)
-   │   │            by the mod                   │  │ /inbound (held until reply)
-   │   └─ SendMessage ◄─ Codex subagent          │  └── claude-relay MCP ◄── Codex app / CLI thread
-   └───── SendMessage ◄─ codex-inbox (one per session, all external threads)
+Claude ─create_thread─► codex-thread-bridge (MCP) ─ws/UDS─► Codex App Server daemon
+  ▲                         │ events socket                    │ turn/completed (push)
+  │                         ▼                                  │
+  └─SendMessage── watcher subagent ◄── $.http.fetch held ◄─────┘
 ```
 
-- A Codex subagent is a Claude subagent whose model steps the mod answers by driving a Codex thread (`thread/start`, `turn/start`), streaming Codex's messages back as the step's text and its commands/edits as (unrecorded) thinking. So it shows in the task list, its answer returns like any agent's, and SendMessage reaches it.
-- Claude → running Codex turn: `turn/steer` (lands mid-turn). Claude → finished Codex subagent: the engine resumes the agent, which runs a new Codex turn.
-- Codex → Claude never impersonates the person: every message reaches Claude as a real `SendMessage` from a subagent's own loop, which the mod emits as that subagent's tool use.
-  - Codex subagents: app-server *dynamic tools* (`claude_send`, `claude_agents`). A `claude_send` call ends the subagent's step with a SendMessage; its result is the tool's answer.
-  - Other Codex threads (Codex app, CLI): the `claude-relay` MCP server posts to the session's bridge and by default blocks for the reply. The session's `codex-inbox` subagent relays it as its own SendMessage; Claude answers with SendMessage to `codex:<threadId>`, which resolves the blocked call.
-  - The inbox runs for the whole session: only an agent spawned from inside a hook gets the mod's `turn.step`, so it starts in `session.start` / `session.attach`, and `turn.start` restarts it if it ended. Its idle wait is a tool call (`codex_inbox_wait`), so a mod reload hands it to the new module. In a headless run (no surface) there's no inbox and inbound messages fail fast.
-  - Late replies go to `~/.agent-relay/mailbox/<thread>.jsonl`, drained by `claude_inbox` and the plugin's `Stop`/`UserPromptSubmit` hooks.
-- Model + effort are resolved at spawn (spawn args → mod options → Codex `config.toml` → the model's default) and shown in the task list (`[gpt-… · high] task`), the status line, `/codex`, and `codex_spawn`'s result. (The engine still labels the subagent's own transcript rows with its placeholder Claude model, `haiku`, which never runs.)
-- The bridge exists because a mod's `$.process.spawn` stdin is one-shot; long waits are `$.http.fetch` long-polls so they don't burn a hook's 10 s own-time budget.
+**Why a watcher agent:** a real agent's SendMessage is the only way a mod can start a turn on an idle main conversation without writing a user-role row. MCP channels would do this natively, but Claude Desktop runs sessions in SDK mode, where channels are off.
 
-## Claude side
-
-Tools: `codex_spawn` (prompt, model, effort, name, sandbox, cwd, wait), `codex_send`, `codex_list`, `codex_interrupt`; `/codex` shows status. SendMessage to a Codex subagent's name, or to `codex:<threadId>` for an external Codex thread, also works.
-
-Options (`/config` → codex-relay): default model, effort, sandbox, transport (`spawn` a private app-server, or `daemon` to share the local one), node/codex paths.
+Requires `uv`, Python ≥ 3.11 (uv fetches it), and `codex` ≥ 0.166 with its app-server daemon running. The Codex app runs it, or start it with `codex app-server daemon start`.
 
 Install, at a Claude Code terminal prompt:
 
 ```
 /plugin install codex-relay --marketplace <owner>/agent-relay
 ```
-
-## Codex side
-
-```bash
-codex plugin marketplace add /path/to/agent-relay
-```
-
-```bash
-codex plugin add claude-relay@agent-relay
-```
-
-Tools: `claude_sessions`, `claude_send` (`session`, `to`, `name`, `wait_for_reply`, `timeout_sec`), `claude_inbox`.
-
-Requires Node ≥ 18 and `codex` ≥ 0.166 (app-server with `turn/steer` and dynamic tools).

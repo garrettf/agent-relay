@@ -5,7 +5,7 @@
     {
       "name": "codex-relay",
       "source": "./claude-plugin",
-      "description": "Run OpenAI Codex threads as Claude subagents (any model + effort) and message between Claude and Codex agents."
+      "description": "Run OpenAI Codex threads (any model + effort) from Claude, with a running-task UI and results messaged back."
     }
   ]
 }

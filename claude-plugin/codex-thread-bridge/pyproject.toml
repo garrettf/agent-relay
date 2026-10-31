@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "codex-thread-bridge"
+version = "0.1.0"
+description = "An alternative MCP client for thread operations on an existing same-host Codex App Server"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = ["mcp>=1.26,<2", "websockets>=15,<18"]
+
+[project.scripts]
+codex-thread-bridge = "codex_thread_bridge.server:main"
+codex-thread-bridge-reload = "codex_thread_bridge.reload:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8,<10",
+    "pytest-asyncio>=1,<2",
+    "ruff>=0.12,<1",
+    "ty>=0.0.1,<1",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/codex_thread_bridge"]
