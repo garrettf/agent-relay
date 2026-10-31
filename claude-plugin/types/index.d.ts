@@ -15,6 +15,9 @@ export type CodexRun = {
   watcher: string | null
   /** Who gets the result: "main" or the dispatching subagent's name. */
   reportTo: string
+  /** Set once the turn ended and was reported (or read by wait_thread); the band keeps it. */
+  endedAt?: number | null
+  status?: string | null
 }
 
 declare module 'claude-code' {

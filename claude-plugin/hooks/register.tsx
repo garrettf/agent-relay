@@ -38,9 +38,12 @@ const BRIDGE_TOOL = /^mcp__.*codex.*__(create_thread|create_worktree_thread|send
 const CODEX_WORDS = /\b(codex|gpt[\s-]?\d[\w.]*|luna|sol|terra|astra)\b/i
 // Prompts no person typed (agent messages, notifications): no routing note.
 const NOT_TYPED = new Set(['task-notification', 'scheduled-trigger', 'peer', 'peer-send-message', 'coordinator', 'observer', 'observer-activity', 'auto-continuation'])
-const WAIT_MS = 10 * 60_000
+const WAIT_MS = 10 * 60_000 // one watch call; the watcher then calls again
+// $.http.fetch gives up on an answer after 30s, so a held request re-arms below that.
+const HOLD_MS = 25_000
 const TICK_MS = 15_000
 const MAX_ANSWER = 12_000
+const KEEP_ENDED = 5 // finished turns the band keeps, for their deeplinks
 const MAX_WAIT_ERRORS = 5 // in a row; a reload cancels one, a broken hook fails every one
 
 const runs = atom({ plugin: 'codex-relay', key: 'runs' } as const, {} as Record<string, CodexRun>)
@@ -85,8 +88,14 @@ function deeplink(threadId: string): string {
   return `codex://threads/${threadId}`
 }
 
+// Desktop draws only https: links, so the band opens the deeplink from the host.
+async function openInCodex($: $, threadId: string) {
+  const { exitCode, stderr } = await $.process.run(['open', deeplink(threadId)], { timeoutMs: 10_000 })
+  if (exitCode !== 0) $.ui.toast(`codex-relay: could not open the Codex app: ${stderr.trim()}`)
+}
+
 async function refresh($: $) {
-  const list = Object.values(await read($, runs))
+  const list = Object.values(await read($, runs)).filter(r => r.endedAt == null)
   const t = await $.clock.now()
   await update($, now, () => t)
   if (!list.length) {
@@ -110,6 +119,25 @@ async function dropRun($: $, key: string) {
     return rest
   })
   await refresh($)
+}
+
+// The band keeps a finished turn (and its deeplink) until cleared or pushed out.
+async function endRun($: $, key: string, status: string) {
+  const t = await $.clock.now()
+  await update($, runs, all => {
+    if (!all[key] || all[key]!.endedAt != null) return all
+    const next = { ...all, [key]: { ...all[key]!, endedAt: t, status } }
+    const ended = Object.values(next)
+      .filter(r => r.endedAt != null)
+      .sort((a, b) => b.endedAt! - a.endedAt!)
+    for (const r of ended.slice(KEEP_ENDED)) delete next[r.key]
+    return next
+  })
+  await refresh($)
+}
+
+async function clearEnded($: $) {
+  await update($, runs, all => Object.fromEntries(Object.entries(all).filter(([, r]) => r.endedAt == null)))
 }
 
 // The model's input names a title or a prompt; either makes a readable name.
@@ -243,7 +271,7 @@ async function* driveWatcher($: $, e: TurnStepInput, agentId: string, key: strin
   const failure: string | undefined =
     outcome?.error ?? (errors >= MAX_WAIT_ERRORS ? `its wait failed ${errors} times: ${lastUse?.text ?? ''}` : undefined)
   if (!ended && !failure) return yield* callTool(e, WATCH_TOOL, {})
-  await dropRun($, key)
+  await endRun($, key, ended?.status ?? 'lost')
   const to = run?.reportTo ?? 'main'
   const message = ended
     ? report(run, ended)
@@ -256,36 +284,52 @@ async function* driveWatcher($: $, e: TurnStepInput, agentId: string, key: strin
 
 // The watcher's wait: answers once the turn ends, or after WAIT_MS.
 async function watch($: $, key: string): Promise<string> {
-  const run = (await read($, runs))[key]
-  if (!run) return JSON.stringify({ isSeen: true })
-  try {
-    const res = await $.http.fetch(`http://codex/wait?turns=${encodeURIComponent(key)}&timeoutMs=${WAIT_MS}`, {
-      socketPath: run.socket,
-    })
+  const until = (await $.clock.now()) + WAIT_MS
+  while ((await $.clock.now()) < until) {
+    const run = (await read($, runs))[key]
+    if (!run || run.endedAt != null) return JSON.stringify({ isSeen: true })
+    let res
+    try {
+      res = await $.http.fetch(`http://codex/wait?turns=${encodeURIComponent(key)}&timeoutMs=${HOLD_MS}`, {
+        socketPath: run.socket,
+      })
+    } catch (err) {
+      return JSON.stringify({ error: `the bridge is unreachable: ${err instanceof Error ? err.message : err}` })
+    }
     const body = parseJson(res.text)
     if (!res.ok) return JSON.stringify({ error: body?.error ?? `HTTP ${res.status}` })
-    if (!(await read($, runs))[key]) return JSON.stringify({ isSeen: true })
-    return JSON.stringify(body)
-  } catch (err) {
-    return JSON.stringify({ error: `the bridge is unreachable: ${err instanceof Error ? err.message : err}` })
+    if (body?.ended?.length) {
+      const after = (await read($, runs))[key]
+      return JSON.stringify(after && after.endedAt == null ? body : { isSeen: true })
+    }
   }
+  return JSON.stringify({ ended: [] })
 }
 
 // ---------------------------------------------------------------- the UI ---
 
 function band($: $, e: any, list: CodexRun[], t: number) {
-  const { Box, Text, Link } = $.ui.resolve(e)
+  const { Box, Text, Button } = $.ui.resolve(e)
+  const running = list.filter(r => r.endedAt == null)
+  const ended = list.filter(r => r.endedAt != null).sort((a, b) => b.endedAt! - a.endedAt!)
   return (
-    <Box flexDirection="column">
-      {list.map(r => (
-        <Box key={r.key} flexDirection="row" gap={1}>
+    // Buttons are taller than a line of text: center each row and space them.
+    <Box flexDirection="column" gap="xs">
+      {[...running, ...ended].map(r => (
+        <Box key={r.key} flexDirection="row" alignItems="center" gap="sm">
           <Text dimColor>
-            ◐ Codex · {modelLabel(r)} · {r.title} · {elapsed(t - r.startedAt)}
-            {r.watcher ? ` · ${r.watcher}` : ''} ·
+            {r.endedAt == null
+              ? `◐ Codex · ${modelLabel(r)} · ${r.title} · ${elapsed(t - r.startedAt)}${r.watcher ? ` · ${r.watcher}` : ''} ·`
+              : `${r.status === 'completed' ? '✓' : '✗'} Codex · ${modelLabel(r)} · ${r.title} · ${r.status} in ${elapsed(r.endedAt - r.startedAt)} ·`}
           </Text>
-          <Link href={deeplink(r.threadId)} label="Open in Codex" />
+          <Button key={`open-${r.key}`} label="Open in Codex" dimColor onPress={() => openInCodex($, r.threadId)} />
         </Box>
       ))}
+      {ended.length ? (
+        <Box flexDirection="row">
+          <Button key="clear" label="Clear finished" dimColor onPress={() => clearEnded($)} />
+        </Box>
+      ) : null}
     </Box>
   )
 }
@@ -371,7 +415,7 @@ export const register: Register = on => {
     const body = parseJson(result.text)
     if (tool === 'wait_thread') {
       // The dispatcher has the result itself: its watcher ends without a message.
-      if (body && !body.timedOut) await dropRun($, `${body.threadId}:${body.turnId}`)
+      if (body && !body.timedOut) await endRun($, `${body.threadId}:${body.turnId}`, body.turn?.status ?? 'ended')
       return result
     }
     const watcher = await trackDispatch($, e, body)

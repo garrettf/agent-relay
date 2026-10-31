@@ -15,6 +15,8 @@
   - Only an agent spawned via `$.agent.spawn` from inside a live hook frame gets the mod's `turn.step`, so watchers are spawned in the dispatching tool.call hook.
   - A plugin-spawned agent's first run sends main no task notification, so the watcher reports by SendMessage.
   - A `tool.call` in flight is cancelled at a reload, so a watcher waits in a tool call (`codex_watch`), and its next step sees the error and waits again.
+  - `$.http.fetch` gives up after 30s with no option to extend it, so held requests re-arm every 25s (`HOLD_MS`). Test with a turn longer than 30s (e.g. `sleep 45`).
+  - The desktop surface draws only `https:` / `http://localhost` links (`codex://` renders as plain text), so the band opens deeplinks with a Button that runs `open` on the host.
 - Type-check: `npx -y -p typescript@5.6.3 tsc -p claude-plugin`. Validate: `claude plugin validate claude-plugin`.
 - `claude -p` from this shell has no valid auth (OAuth expired), so test end to end in a Desktop session.
 - Test Codex spawns on luna models (`gpt-6-luna`, `gpt-5.6-luna`) at low effort.
