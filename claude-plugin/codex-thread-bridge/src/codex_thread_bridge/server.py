@@ -20,6 +20,30 @@ READ = ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=F
 WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=True)
 
 
+def brief(receipt: dict[str, Any]) -> dict[str, Any]:
+    """An accepted dispatch receipt without the App Server's full thread state.
+
+    The ledger keeps the full receipt for get_operation. Other outcomes return in full,
+    since recovery needs everything they know.
+    """
+    if receipt.get("status") != "accepted":
+        return receipt
+    settings = receipt.get("creation") or receipt.get("resumed") or {}
+    out = {
+        "requestId": receipt.get("requestId"),
+        "status": "accepted",
+        "replayed": receipt.get("replayed"),
+        "threadId": receipt.get("threadId"),
+        "turnId": receipt.get("turnId"),
+        "title": receipt.get("title") or (settings.get("thread") or {}).get("name"),
+        "model": settings.get("model"),
+        "reasoningEffort": settings.get("reasoningEffort"),
+        "sandbox": (settings.get("sandbox") or {}).get("type"),
+        "cwd": settings.get("cwd"),
+    }
+    return {key: value for key, value in out.items() if value is not None}
+
+
 def make_server(bridge: Bridge, events_socket: Path | None = None):
     events = EventsServer(bridge, events_socket) if events_socket else None
 
@@ -36,6 +60,7 @@ def make_server(bridge: Bridge, events_socket: Path | None = None):
             bridge.ledger.close()
 
     def with_events(receipt: dict[str, Any]) -> dict[str, Any]:
+        receipt = brief(receipt)
         # Where a client can wait for the dispatched turn (see events.py); not retained.
         return {**receipt, "eventsSocket": str(events.path)} if events else receipt
 

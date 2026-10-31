@@ -168,16 +168,15 @@ async function nameOf($: $, agentId: string | undefined): Promise<string> {
 // After a bridge call that dispatched a turn: track it and start its watcher.
 async function trackDispatch($: $, e: any, receipt: any): Promise<string | null> {
   if (receipt?.status !== 'accepted' || !receipt.turnId || !receipt.threadId || !receipt.eventsSocket) return null
-  const settings = receipt.creation ?? receipt.resumed ?? {}
   const known = (await read($, runs))[`${receipt.threadId}:${receipt.turnId}`]
   if (known) return known.watcher // a replayed receipt
   const run: CodexRun = {
     key: `${receipt.threadId}:${receipt.turnId}`,
     threadId: receipt.threadId,
     turnId: receipt.turnId,
-    title: String(e.title || receipt.title || settings.thread?.name || String(e.prompt ?? e.message ?? '').slice(0, 60) || 'Codex thread'),
-    model: settings.model ?? null,
-    effort: settings.reasoningEffort ?? null,
+    title: String(e.title || receipt.title || String(e.prompt ?? e.message ?? '').slice(0, 60) || 'Codex thread'),
+    model: receipt.model ?? null,
+    effort: receipt.reasoningEffort ?? null,
     startedAt: await $.clock.now(),
     socket: receipt.eventsSocket,
     watcher: null,

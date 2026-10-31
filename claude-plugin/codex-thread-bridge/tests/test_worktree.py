@@ -311,7 +311,7 @@ async def test_mcp_isolated_launch_and_followup_are_durable(fake_server, reposit
             )
             assert followup.structuredContent["status"] == "accepted"
             state = await session.call_tool("get_operation", {"request_id": args["request_id"]})
-            assert state.structuredContent["worktree"] == receipt["worktree"]
+            assert state.structuredContent["worktree"]["checkout"] == receipt["cwd"]
     assert receipts[1]["replayed"]
     assert len(fake.threads) == 1
     thread = fake.threads[receipts[0]["threadId"]]
@@ -323,7 +323,7 @@ async def test_mcp_isolated_launch_and_followup_are_durable(fake_server, reposit
         "namespace": "codex_thread_bridge",
         "output": args["prompt"],
     }
-    assert receipts[0]["creation"]["reasoningEffort"] == "high"
+    assert receipts[0]["reasoningEffort"] == "high"
 
 
 async def test_git_hooks_filters_and_fsmonitor_are_not_run(bridge, repository, tmp_path):

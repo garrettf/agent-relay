@@ -101,7 +101,10 @@ async def test_real_mcp_stdio_discovery_create_read_and_dedup(fake_server, tmp_p
         assert not result.isError
         receipt = result.structuredContent
         assert receipt["status"] == "accepted"
-        assert receipt["creation"]["reasoningEffort"] == "high"
+        assert receipt["reasoningEffort"] == "high"
+        assert "creation" not in receipt
+        retained = await session.call_tool("get_operation", {"request_id": args["request_id"]})
+        assert retained.structuredContent["creation"]["reasoningEffort"] == "high"
         repeated = await session.call_tool("create_thread", args)
         assert repeated.structuredContent["replayed"]
         followup = await session.call_tool(
