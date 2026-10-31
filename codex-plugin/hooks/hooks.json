@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "\"$PLUGIN_ROOT/scripts/node\" \"$PLUGIN_ROOT/scripts/mailbox-hook.mjs\"", "timeout": 10 }] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "\"$PLUGIN_ROOT/scripts/node\" \"$PLUGIN_ROOT/scripts/mailbox-hook.mjs\"", "timeout": 10 }] }
+    ]
+  }
+}

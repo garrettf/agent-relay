@@ -1,0 +1,11 @@
+{
+  "name": "agent-relay",
+  "owner": { "name": "Garrett Fidalgo" },
+  "plugins": [
+    {
+      "name": "codex-relay",
+      "source": "./claude-plugin",
+      "description": "Run OpenAI Codex threads as Claude subagents (any model + effort) and message between Claude and Codex agents."
+    }
+  ]
+}

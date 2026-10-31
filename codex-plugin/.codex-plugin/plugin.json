@@ -1,0 +1,20 @@
+{
+  "name": "claude-relay",
+  "version": "0.1.0",
+  "description": "Message Claude Code sessions from Codex, and receive their replies.",
+  "author": { "name": "Garrett Fidalgo" },
+  "license": "MIT",
+  "keywords": ["claude", "claude code", "agents", "relay", "messaging"],
+  "mcpServers": "./.mcp.json",
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json",
+  "interface": {
+    "displayName": "Claude Relay",
+    "shortDescription": "Talk to Claude Code sessions on this Mac",
+    "longDescription": "Ask a running Claude Code session a question and wait for its answer, message its subagents, and receive Claude's replies in this thread. Works with Claude Code sessions that have the codex-relay mod loaded.",
+    "developerName": "Garrett Fidalgo",
+    "category": "Developer Tools",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": ["Ask Claude to review my last change", "List the Claude sessions I can talk to"]
+  }
+}
