@@ -333,6 +333,8 @@ function band($: $, e: any, list: CodexRun[], t: number) {
   const { Box, Text, Button } = $.ui.resolve(e)
   const running = list.filter(r => r.endedAt == null)
   const ended = list.filter(r => r.endedAt != null).sort((a, b) => b.endedAt! - a.endedAt!)
+  // A numeric width is cells on the terminal but CSS pixels on the graphical surfaces.
+  const w = e.surface === 'terminal' ? { mark: 2, action: 5 } : { mark: 16, action: 28 }
   return (
     // Buttons are taller than a line of text: center each row and space them.
     <Box flexDirection="column" gap="xs">
@@ -341,9 +343,10 @@ function band($: $, e: any, list: CodexRun[], t: number) {
           r.endedAt == null ? ['◐', 'claude'] : r.status === 'completed' ? ['✓', 'success'] : ['✗', 'error']
         return (
           <Box key={r.key} flexDirection="row" alignItems="center" gap="sm">
-            {/* A numeric width clips on desktop, so the mark is spaced with step tokens only. */}
-            <Box flexGrow={1} flexShrink={1} flexDirection="row" gap="xs" paddingLeft="xs">
+            <Box width={w.mark} flexShrink={0} alignItems="center">
               <Text color={color}>{mark}</Text>
+            </Box>
+            <Box flexGrow={1} flexShrink={1}>
               <Text wrap="truncate-end">
                 <Text dimColor>{`${r.title} · `}</Text>
                 <Text italic dimColor>{modelLabel(r)}</Text>
@@ -353,11 +356,14 @@ function band($: $, e: any, list: CodexRun[], t: number) {
               {elapsed((r.endedAt ?? t) - r.startedAt)}
             </Text>
             <Button key={`open-${r.key}`} label="Open" dimColor onPress={() => openInCodex($, r.threadId)} />
-            {r.endedAt == null ? (
-              <Button key={`stop-${r.key}`} label="■" plain dimColor onPress={() => stopRun($, r)} />
-            ) : (
-              <Button key={`clear-${r.key}`} label="✕" plain dimColor onPress={() => clearEnded($, r.key)} />
-            )}
+            {/* One slot for stop and clear, so Open stays put when a run ends. */}
+            <Box width={w.action} flexShrink={0} alignItems="center">
+              {r.endedAt == null ? (
+                <Button key={`stop-${r.key}`} label="■" dimColor onPress={() => stopRun($, r)} />
+              ) : (
+                <Button key={`clear-${r.key}`} label="✕" dimColor onPress={() => clearEnded($, r.key)} />
+              )}
+            </Box>
           </Box>
         )
       })}
