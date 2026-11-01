@@ -41,6 +41,7 @@ const NOT_TYPED = new Set(['task-notification', 'scheduled-trigger', 'peer', 'pe
 const WAIT_MS = 10 * 60_000 // one watch call; the watcher then calls again
 // $.http.fetch gives up on an answer after 30s, so a held request re-arms below that.
 const HOLD_MS = 25_000
+const BRIDGE_RETRY_MS = 5_000
 const TICK_MS = 1_000 // the band's running times count by the second
 const MAX_ANSWER = 12_000
 const KEEP_ENDED = 5 // finished turns the band keeps, for their deeplinks
@@ -115,8 +116,21 @@ async function refresh($: $) {
   ticker ??= $.clock.every(TICK_MS, () => void refresh($))
 }
 
+// $.state dies with the process; the store copy lets a restarted session pick its runs back up.
+async function storeKey($: $): Promise<string> {
+  return `runs:${await $.session.id()}`
+}
+
+async function setRuns($: $, fn: (all: Record<string, CodexRun>) => Record<string, CodexRun>) {
+  await update($, runs, fn)
+  const all = await read($, runs)
+  const key = await storeKey($)
+  if (Object.keys(all).length) await $.store.set(key, all)
+  else await $.store.delete(key)
+}
+
 async function dropRun($: $, key: string) {
-  await update($, runs, all => {
+  await setRuns($, all => {
     const { [key]: _, ...rest } = all
     return rest
   })
@@ -126,7 +140,7 @@ async function dropRun($: $, key: string) {
 // The band keeps a finished turn (and its deeplink) until cleared or pushed out.
 async function endRun($: $, key: string, status: string) {
   const t = await $.clock.now()
-  await update($, runs, all => {
+  await setRuns($, all => {
     if (!all[key] || all[key]!.endedAt != null) return all
     const next = { ...all, [key]: { ...all[key]!, endedAt: t, status } }
     const ended = Object.values(next)
@@ -140,7 +154,7 @@ async function endRun($: $, key: string, status: string) {
 
 // A running turn is never cleared: its watcher reads the run to decide whether to report.
 async function clearEnded($: $, key: string) {
-  await update($, runs, all => {
+  await setRuns($, all => {
     if (all[key]?.endedAt == null) return all
     const { [key]: _, ...rest } = all
     return rest
@@ -189,7 +203,12 @@ async function trackDispatch($: $, e: any, receipt: any): Promise<string | null>
     watcher: null,
     reportTo: await nameOf($, e.agentId),
   }
-  await update($, runs, all => ({ ...all, [run.key]: run }))
+  await setRuns($, all => ({ ...all, [run.key]: run }))
+  return spawnWatcher($, run)
+}
+
+// Called only from inside a hook: an agent spawned anywhere else never gets this mod's turn.step.
+async function spawnWatcher($: $, run: CodexRun): Promise<string | null> {
   const name = await uniqueName($, `codex-${slug(run.title)}`)
   const spawned = await $.agent.spawn({
     subagentType: WATCHER,
@@ -203,9 +222,50 @@ async function trackDispatch($: $, e: any, receipt: any): Promise<string | null>
     return null
   }
   watcherRun.set(spawned.agentId!, run.key)
-  await update($, runs, all => (all[run.key] ? { ...all, [run.key]: { ...all[run.key]!, watcher: name } } : all))
+  await setRuns($, all => (all[run.key] ? { ...all, [run.key]: { ...all[run.key]!, watcher: name } } : all))
   await refresh($)
   return name
+}
+
+// A restarted process has no runs in $.state and none of its watchers: take the
+// runs back from the store and give each running one a new watcher. A hot
+// reload keeps $.state, so this only acts after a restart.
+async function restoreRuns($: $) {
+  if (Object.keys(await read($, runs)).length) return
+  const saved = (await $.store.get(await storeKey($))) as Record<string, CodexRun> | undefined
+  if (!saved || !Object.keys(saved).length) return
+  const agents = new Set((await $.agent.list()).map(a => a.name))
+  const restored = Object.fromEntries(
+    Object.values(saved).map(r => [
+      r.key,
+      r.endedAt != null ? r : { ...r, watcher: null, reportTo: agents.has(r.reportTo) ? r.reportTo : 'main' },
+    ]),
+  )
+  await setRuns($, () => restored)
+  for (const r of Object.values(restored)) if (r.endedAt == null) await spawnWatcher($, r)
+  await refresh($)
+}
+
+// Any live bridge can watch any turn (it reads App Server), so a run whose
+// bridge died (a restart) moves to the newest one that answers.
+async function liveSocket($: $, run: CodexRun): Promise<string | null> {
+  const dir = run.socket.slice(0, run.socket.lastIndexOf('/'))
+  const { exitCode, stdout } = await $.process.run(['ls', '-t', dir], { timeoutMs: 5_000 })
+  if (exitCode !== 0) return null
+  for (const name of stdout.split('\n').filter(n => n.endsWith('.sock'))) {
+    const socket = `${dir}/${name}`
+    try {
+      const res = await $.http.fetch(`http://codex/wait?turns=${encodeURIComponent(run.key)}&timeoutMs=0`, {
+        socketPath: socket,
+      })
+      if (!res.ok) continue
+    } catch {
+      continue
+    }
+    await setRuns($, all => (all[run.key] ? { ...all, [run.key]: { ...all[run.key]!, socket } } : all))
+    return socket
+  }
+  return null
 }
 
 // ------------------------------------------------------------- watchers ---
@@ -315,6 +375,12 @@ async function watch($: $, key: string): Promise<string> {
         socketPath: run.socket,
       })
     } catch (err) {
+      if (await liveSocket($, run)) continue
+      // No bridge is up yet (one starts with each session's MCP servers): wait for one.
+      if ((await $.clock.now()) + BRIDGE_RETRY_MS < until) {
+        await $.clock.sleep(BRIDGE_RETRY_MS)
+        continue
+      }
       return JSON.stringify({ error: `the bridge is unreachable: ${err instanceof Error ? err.message : err}` })
     }
     const body = parseJson(res.text)
@@ -333,8 +399,8 @@ function band($: $, e: any, list: CodexRun[], t: number) {
   const { Box, Text, Button } = $.ui.resolve(e)
   const running = list.filter(r => r.endedAt == null)
   const ended = list.filter(r => r.endedAt != null).sort((a, b) => b.endedAt! - a.endedAt!)
-  // A numeric width is cells on the terminal but CSS pixels on the graphical surfaces.
-  const w = e.surface === 'terminal' ? { mark: 2, action: 5 } : { mark: 16, action: 28 }
+  // Widths are in cells on every surface (about 19px on desktop); the action slot fits one Button.
+  const w = { mark: 1.5, action: 3.5 }
   return (
     // Buttons are taller than a line of text: center each row and space them.
     <Box flexDirection="column" gap="xs">
@@ -343,7 +409,7 @@ function band($: $, e: any, list: CodexRun[], t: number) {
           r.endedAt == null ? ['◐', 'claude'] : r.status === 'completed' ? ['✓', 'success'] : ['✗', 'error']
         return (
           <Box key={r.key} flexDirection="row" alignItems="center" gap="sm">
-            <Box width={w.mark} flexShrink={0} alignItems="center">
+            <Box width={w.mark} flexShrink={0} justifyContent="center">
               <Text color={color}>{mark}</Text>
             </Box>
             <Box flexGrow={1} flexShrink={1}>
@@ -352,12 +418,14 @@ function band($: $, e: any, list: CodexRun[], t: number) {
                 <Text italic dimColor>{modelLabel(r)}</Text>
               </Text>
             </Box>
-            <Text tabular dimColor>
-              {elapsed((r.endedAt ?? t) - r.startedAt)}
-            </Text>
+            <Box flexShrink={0}>
+              <Text tabular dimColor>
+                {elapsed((r.endedAt ?? t) - r.startedAt)}
+              </Text>
+            </Box>
             <Button key={`open-${r.key}`} label="Open" dimColor onPress={() => openInCodex($, r.threadId)} />
             {/* One slot for stop and clear, so Open stays put when a run ends. */}
-            <Box width={w.action} flexShrink={0} alignItems="center">
+            <Box width={w.action} flexShrink={0} justifyContent="center">
               {r.endedAt == null ? (
                 <Button key={`stop-${r.key}`} label="■" dimColor onPress={() => stopRun($, r)} />
               ) : (
@@ -390,6 +458,7 @@ export const register: Register = on => {
       inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     })
     const started = await next(e)
+    await restoreRuns($)
     await refresh($)
     return started
   })
