@@ -348,7 +348,7 @@ function band($: $, e: any, list: CodexRun[], t: number) {
             <Box flexGrow={1} flexShrink={1}>
               <Text wrap="truncate-end">
                 <Text dimColor>{`${r.title} · `}</Text>
-                <Text color="suggestion">{modelLabel(r)}</Text>
+                <Text color="subtle">{modelLabel(r)}</Text>
               </Text>
             </Box>
             <Text tabular dimColor>
