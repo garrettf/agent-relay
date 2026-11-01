@@ -41,7 +41,7 @@ const NOT_TYPED = new Set(['task-notification', 'scheduled-trigger', 'peer', 'pe
 const WAIT_MS = 10 * 60_000 // one watch call; the watcher then calls again
 // $.http.fetch gives up on an answer after 30s, so a held request re-arms below that.
 const HOLD_MS = 25_000
-const TICK_MS = 15_000
+const TICK_MS = 1_000 // the band's running times count by the second
 const MAX_ANSWER = 12_000
 const KEEP_ENDED = 5 // finished turns the band keeps, for their deeplinks
 const MAX_WAIT_ERRORS = 5 // in a row; a reload cancels one, a broken hook fails every one
@@ -72,8 +72,10 @@ function parseJson(text: string | undefined): any {
   }
 }
 
+const EFFORT: Record<string, string> = { medium: 'med', high: 'hi' }
+
 function modelLabel(r: Pick<CodexRun, 'model' | 'effort'>): string {
-  return [r.model ?? 'default model', r.effort].filter(Boolean).join(' · ')
+  return [r.model ?? 'default model', r.effort && (EFFORT[r.effort] ?? r.effort)].filter(Boolean).join(' ')
 }
 
 function elapsed(ms: number): string {
@@ -136,8 +138,13 @@ async function endRun($: $, key: string, status: string) {
   await refresh($)
 }
 
-async function clearEnded($: $) {
-  await update($, runs, all => Object.fromEntries(Object.entries(all).filter(([, r]) => r.endedAt == null)))
+// A running turn is never cleared: its watcher reads the run to decide whether to report.
+async function clearEnded($: $, key: string) {
+  await update($, runs, all => {
+    if (all[key]?.endedAt == null) return all
+    const { [key]: _, ...rest } = all
+    return rest
+  })
 }
 
 // The model's input names a title or a prompt; either makes a readable name.
@@ -314,21 +321,25 @@ function band($: $, e: any, list: CodexRun[], t: number) {
   return (
     // Buttons are taller than a line of text: center each row and space them.
     <Box flexDirection="column" gap="xs">
-      {[...running, ...ended].map(r => (
-        <Box key={r.key} flexDirection="row" alignItems="center" gap="sm">
-          <Text dimColor>
-            {r.endedAt == null
-              ? `◐ Codex · ${modelLabel(r)} · ${r.title} · ${elapsed(t - r.startedAt)}${r.watcher ? ` · ${r.watcher}` : ''} ·`
-              : `${r.status === 'completed' ? '✓' : '✗'} Codex · ${modelLabel(r)} · ${r.title} · ${r.status} in ${elapsed(r.endedAt - r.startedAt)} ·`}
-          </Text>
-          <Button key={`open-${r.key}`} label="Open in Codex" dimColor onPress={() => openInCodex($, r.threadId)} />
-        </Box>
-      ))}
-      {ended.length ? (
-        <Box flexDirection="row">
-          <Button key="clear" label="Clear finished" dimColor onPress={() => clearEnded($)} />
-        </Box>
-      ) : null}
+      {[...running, ...ended].map(r => {
+        const [mark, color] =
+          r.endedAt == null ? ['◐', 'claude'] : r.status === 'completed' ? ['✓', 'success'] : ['✗', 'error']
+        return (
+          <Box key={r.key} flexDirection="row" alignItems="center" gap="sm">
+            <Box flexGrow={1} flexShrink={1} flexDirection="row" gap="sm">
+              <Text color={color}>{mark}</Text>
+              <Text wrap="truncate-end" dimColor>
+                {`${r.title} · ${modelLabel(r)} · `}
+                <Text tabular>{elapsed((r.endedAt ?? t) - r.startedAt)}</Text>
+              </Text>
+            </Box>
+            <Button key={`open-${r.key}`} label="Open" dimColor onPress={() => openInCodex($, r.threadId)} />
+            {r.endedAt != null ? (
+              <Button key={`clear-${r.key}`} label="✕" plain dimColor onPress={() => clearEnded($, r.key)} />
+            ) : null}
+          </Box>
+        )
+      })}
     </Box>
   )
 }
