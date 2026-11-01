@@ -342,24 +342,27 @@ function band($: $, e: any, list: CodexRun[], t: number) {
         return (
           <Box key={r.key} flexDirection="row" alignItems="center" gap="sm">
             {/* The marks differ in glyph width; a fixed cell keeps the titles aligned. */}
-            <Box width={2} flexShrink={0} justifyContent="center">
+            <Box width={1} flexShrink={0} justifyContent="center">
               <Text color={color}>{mark}</Text>
             </Box>
             <Box flexGrow={1} flexShrink={1}>
               <Text wrap="truncate-end">
                 <Text dimColor>{`${r.title} · `}</Text>
-                <Text color="subtle">{modelLabel(r)}</Text>
+                <Text italic dimColor>{modelLabel(r)}</Text>
               </Text>
             </Box>
             <Text tabular dimColor>
               {elapsed((r.endedAt ?? t) - r.startedAt)}
             </Text>
             <Button key={`open-${r.key}`} label="Open" dimColor onPress={() => openInCodex($, r.threadId)} />
-            {r.endedAt == null ? (
-              <Button key={`stop-${r.key}`} label="■" plain dimColor onPress={() => stopRun($, r)} />
-            ) : (
-              <Button key={`clear-${r.key}`} label="✕" plain dimColor onPress={() => clearEnded($, r.key)} />
-            )}
+            {/* One fixed slot for stop and clear, so Open stays put when a run ends. */}
+            <Box width={2} flexShrink={0} justifyContent="center">
+              {r.endedAt == null ? (
+                <Button key={`stop-${r.key}`} label="■" plain dimColor onPress={() => stopRun($, r)} />
+              ) : (
+                <Button key={`clear-${r.key}`} label="✕" plain dimColor onPress={() => clearEnded($, r.key)} />
+              )}
+            </Box>
           </Box>
         )
       })}
