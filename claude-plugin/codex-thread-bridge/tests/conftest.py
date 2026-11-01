@@ -137,6 +137,11 @@ class FakeServer:
                     continue
                 turn["items"].append({"type": "userMessage", "text": params["input"][0]["text"]})
                 result = {"turnId": turn["id"]}
+            elif method == "turn/interrupt":
+                thread = self.threads[params["threadId"]]
+                turn = next(t for t in thread["turns"] if t["id"] == params["turnId"])
+                turn["status"] = "interrupted"
+                result = {}
             elif method == "thread/read":
                 thread = dict(self.threads[params["threadId"]])
                 if not params.get("includeTurns"):

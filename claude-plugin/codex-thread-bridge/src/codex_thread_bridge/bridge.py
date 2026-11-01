@@ -1002,6 +1002,13 @@ class Bridge:
         ended, _ = await self.watch.wait(pairs, timeout_seconds)
         return [{k: v for k, v in r.items() if k != "turn"} for r in ended]
 
+    async def interrupt_turn(self, thread_id: str, turn_id: str):
+        """Ask App Server to stop a running turn; it then ends as `interrupted`."""
+        nonempty(thread_id, "thread_id", 128)
+        nonempty(turn_id, "turn_id", 128)
+        await self.rpc.call("turn/interrupt", {"threadId": thread_id, "turnId": turn_id})
+        return {"threadId": thread_id, "turnId": turn_id, "interrupted": True}
+
     async def models(self) -> list[dict]:
         if self._models is None:
             listed = await self.rpc.call("model/list", {})

@@ -509,3 +509,19 @@ async def test_wait_turns_returns_pushed_completion(bridge, fake_server, tmp_pat
     )
     [ended] = await asyncio.wait_for(waiter, 1)
     assert ended["finalMessage"] == "done" and ended["status"] == "completed"
+
+
+async def test_interrupt_route_stops_the_turn(bridge, fake_server, tmp_path):
+    from codex_thread_bridge.events import EventsServer
+
+    fake, _ = fake_server
+    fake.complete_turns = False
+    created = await bridge.create_thread("create", str(tmp_path), prompt="hi")
+    tid, turn = created["threadId"], created["turnId"]
+    server = EventsServer(bridge, tmp_path / "unused.sock")
+    status, body = await server._route("POST", f"/interrupt?turn={tid}:{turn}", None)
+    assert status == 200 and body["interrupted"]
+    assert ("turn/interrupt", {"threadId": tid, "turnId": turn}) in fake.calls
+    assert fake.threads[tid]["turns"][0]["status"] == "interrupted"
+    status, _ = await server._route("POST", "/interrupt?turn=nope", None)
+    assert status == 400

@@ -8,6 +8,11 @@ mod reaches it with `$.http.fetch(..., { socketPath })`):
 
 It answers as soon as any listed turn ends (pushed by App Server), or with an
 empty list at the timeout. A client that disconnects ends its wait.
+
+    POST /interrupt?turn=<threadId>:<turnId>
+      -> {threadId, turnId, interrupted: true}
+
+Stops a running turn; its waiters then see it end as `interrupted`.
 """
 
 import asyncio
@@ -64,9 +69,14 @@ class EventsServer:
 
     async def _route(self, method: str, target: str, reader: asyncio.StreamReader):
         url = urlsplit(target)
+        query = parse_qs(url.query)
+        if method == "POST" and url.path == "/interrupt":
+            thread_id, sep, turn_id = query.get("turn", [""])[0].partition(":")
+            if not sep or not thread_id or not turn_id:
+                return 400, {"error": "turn: expected threadId:turnId"}
+            return 200, await self.bridge.interrupt_turn(thread_id, turn_id)
         if method != "GET" or url.path != "/wait":
             return 404, {"error": f"no route {method} {url.path}"}
-        query = parse_qs(url.query)
         pairs = []
         for spec in ",".join(query.get("turns", [])).split(","):
             thread_id, sep, turn_id = spec.partition(":")

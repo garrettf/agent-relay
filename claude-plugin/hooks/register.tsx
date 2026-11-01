@@ -72,7 +72,7 @@ function parseJson(text: string | undefined): any {
   }
 }
 
-const EFFORT: Record<string, string> = { medium: 'med', high: 'hi' }
+const EFFORT: Record<string, string> = { medium: 'med' }
 
 function modelLabel(r: Pick<CodexRun, 'model' | 'effort'>): string {
   return [r.model ?? 'default model', r.effort && (EFFORT[r.effort] ?? r.effort)].filter(Boolean).join(' ')
@@ -288,6 +288,21 @@ async function* driveWatcher($: $, e: TurnStepInput, agentId: string, key: strin
   return yield* callTool(e, 'SendMessage', { to, message, summary })
 }
 
+// The turn then ends as `interrupted`, which its watcher reports like any other end.
+async function stopRun($: $, run: CodexRun) {
+  let error: string | undefined
+  try {
+    const res = await $.http.fetch(`http://codex/interrupt?turn=${encodeURIComponent(run.key)}`, {
+      method: 'POST',
+      socketPath: run.socket,
+    })
+    if (!res.ok) error = parseJson(res.text)?.error ?? `HTTP ${res.status}`
+  } catch (err) {
+    error = err instanceof Error ? err.message : String(err)
+  }
+  if (error) $.ui.toast(`codex-relay: could not stop ${run.title}: ${error}`)
+}
+
 // The watcher's wait: answers once the turn ends, or after WAIT_MS.
 async function watch($: $, key: string): Promise<string> {
   const until = (await $.clock.now()) + WAIT_MS
@@ -326,17 +341,25 @@ function band($: $, e: any, list: CodexRun[], t: number) {
           r.endedAt == null ? ['◐', 'claude'] : r.status === 'completed' ? ['✓', 'success'] : ['✗', 'error']
         return (
           <Box key={r.key} flexDirection="row" alignItems="center" gap="sm">
-            <Box flexGrow={1} flexShrink={1} flexDirection="row" gap="sm">
+            {/* The marks differ in glyph width; a fixed cell keeps the titles aligned. */}
+            <Box width={2} flexShrink={0} justifyContent="center">
               <Text color={color}>{mark}</Text>
-              <Text wrap="truncate-end" dimColor>
-                {`${r.title} · ${modelLabel(r)} · `}
-                <Text tabular>{elapsed((r.endedAt ?? t) - r.startedAt)}</Text>
+            </Box>
+            <Box flexGrow={1} flexShrink={1}>
+              <Text wrap="truncate-end">
+                <Text dimColor>{`${r.title} · `}</Text>
+                <Text color="suggestion">{modelLabel(r)}</Text>
               </Text>
             </Box>
+            <Text tabular dimColor>
+              {elapsed((r.endedAt ?? t) - r.startedAt)}
+            </Text>
             <Button key={`open-${r.key}`} label="Open" dimColor onPress={() => openInCodex($, r.threadId)} />
-            {r.endedAt != null ? (
+            {r.endedAt == null ? (
+              <Button key={`stop-${r.key}`} label="■" plain dimColor onPress={() => stopRun($, r)} />
+            ) : (
               <Button key={`clear-${r.key}`} label="✕" plain dimColor onPress={() => clearEnded($, r.key)} />
-            ) : null}
+            )}
           </Box>
         )
       })}
