@@ -108,6 +108,9 @@ def make_server(bridge: Bridge, events_socket: Path | None = None):
         Explicit model and reasoning_effort are verified before dispatching the initial prompt.
         model takes a Codex model ID or a family name (luna, sol, terra, ...) for that family's
         newest model; reasoning_effort e.g. low, medium, high, xhigh, max.
+        sol ~ Opus 5.5 but a little dumber, sloppier, overly defensive code; terra ~ Sonnet 5.5
+        but less clumsy, less overconfident, more precise; luna is the cheap, fast tier. astra is
+        frontier but extra expensive: confirm with the user first unless they named it.
         """
         return with_events(
             await bridge.create_thread(

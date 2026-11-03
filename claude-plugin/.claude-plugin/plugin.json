@@ -1,6 +1,6 @@
 {
   "name": "codex-relay",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Run OpenAI Codex threads (any model + effort) from Claude via a bundled codex-thread-bridge MCP server, with a running-task UI, a Codex app deeplink, and the final answer messaged back when each turn ends.",
   "author": {
     "name": "Garrett Fidalgo"

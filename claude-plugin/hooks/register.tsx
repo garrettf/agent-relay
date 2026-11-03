@@ -471,6 +471,7 @@ export const register: Register = on => {
       'codex-relay: this message may name an OpenAI Codex model. Work for a Codex/GPT model (a "luna/sol/terra subagent", "ask codex", gpt-…) runs through the mcp__plugin_codex-relay_codex__create_thread tool (load it with ToolSearch if deferred), never the Agent tool, which runs Claude models alone.',
       `Pass request_id (a fresh unique string), cwd ("${sessionCwd}" unless another is meant), a self-contained prompt (Codex sees none of this conversation), a short title, model as named (a family name like "luna" means its newest model) and reasoning_effort as named (low/medium/high/xhigh/max).`,
       'sandbox defaults to read-only; pass workspace-write if it must edit files.',
+      'Picking a model: sol is like Opus 5.5 but a little dumber, sloppier, and writes overly defensive code; terra is like Sonnet 5.5 but less clumsy, less overconfident, and more precise; luna is the cheap, fast tier. astra (Codex) and Fable (Claude) are the frontier models but extra expensive: confirm with the user before using either unless they named it.',
       'Do not call wait_thread: codex-relay messages you Codex’s final answer when the turn ends. Follow up with send_message_to_thread.',
     ].join(' ')
     return next({ ...e, context: [...(e.context ?? []), note] })
