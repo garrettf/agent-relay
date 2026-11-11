@@ -33,7 +33,9 @@ Then start a new session. Or, from a Claude Code prompt: `/plugin marketplace ad
 ## How it works
 
 
-![1 Claude calls create_thread, 2 the bridge starts the Codex turn, 3 the mod hooks the call and spawns a watcher, 4 the watcher waits on the bridge, 5 the App Server reports done, 6 the watcher messages Claude the answer](docs/architecture.svg)
+<p align="center">
+  <img src="docs/architecture.svg" alt="1 Claude calls create_thread, 2 the bridge starts the Codex turn, 3 the mod hooks the call and spawns a watcher, 4 the watcher waits on the bridge, 5 the App Server reports done, 6 the watcher messages Claude the answer" />
+</p>
 
 `claude-plugin/` is one Claude Code plugin, `codex-relay`, with two parts:
 
