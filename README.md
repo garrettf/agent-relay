@@ -1,4 +1,9 @@
 # agent-relay
+<p align="center">
+  <img width="49%"  alt="Screenshot 2026-11-02 at 8 09 48 PM" src="https://github.com/user-attachments/assets/1264b836-3d6b-4d11-9e95-89c4144a3e40" />
+  <img width="49%"  alt="Screenshot 2026-11-02 at 8 20 44 PM" src="https://github.com/user-attachments/assets/c0e1bc35-268a-47c5-b25c-a59e55d53680" />
+</p>
+
 
 A Claude Code plugin that lets Claude launch OpenAI Codex subagents on any model and effort.
 
