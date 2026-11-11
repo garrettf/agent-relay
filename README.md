@@ -1,9 +1,8 @@
 # agent-relay
 
-<p align="center">
-  <img width="49%"  alt="Screenshot 2026-11-02 at 8 09 48 PM" src="https://github.com/user-attachments/assets/1264b836-3d6b-4d11-9e95-89c4144a3e40" />
-  <img width="49%"  alt="Screenshot 2026-11-02 at 8 20 44 PM" src="https://github.com/user-attachments/assets/c0e1bc35-268a-47c5-b25c-a59e55d53680" />
-</p>
+
+> [!NOTE]
+> This is 100% slop, but it does the job.
 
 A Claude Code plugin that lets Claude launch OpenAI Codex subagents on any model and effort.
 
@@ -11,7 +10,11 @@ A Claude Code plugin that lets Claude launch OpenAI Codex subagents on any model
 - Claude Desktop shows each subagent's state while it runs: a band above the prompt, the status line, a running task.
 - When a turn ends, Codex's final answer is messaged back to whichever Claude dispatched it.
 
-![1 Claude calls create_thread, 2 the bridge starts the Codex turn, 3 the mod hooks the call and spawns a watcher, 4 the watcher waits on the bridge, 5 the App Server reports done, 6 the watcher messages Claude the answer](docs/architecture.svg)
+<p align="center">
+  <img width="49%"  alt="Screenshot 2026-11-02 at 8 09 48 PM" src="https://github.com/user-attachments/assets/1264b836-3d6b-4d11-9e95-89c4144a3e40" />
+  <img width="49%"  alt="Screenshot 2026-11-02 at 8 20 44 PM" src="https://github.com/user-attachments/assets/c0e1bc35-268a-47c5-b25c-a59e55d53680" />
+</p>
+
 
 ## Install
 
@@ -28,6 +31,9 @@ claude plugin install codex-relay@agent-relay --scope user
 Then start a new session. Or, from a Claude Code prompt: `/plugin marketplace add garrettf/agent-relay`, then `/plugin install codex-relay@agent-relay`.
 
 ## How it works
+
+
+![1 Claude calls create_thread, 2 the bridge starts the Codex turn, 3 the mod hooks the call and spawns a watcher, 4 the watcher waits on the bridge, 5 the App Server reports done, 6 the watcher messages Claude the answer](docs/architecture.svg)
 
 `claude-plugin/` is one Claude Code plugin, `codex-relay`, with two parts:
 
