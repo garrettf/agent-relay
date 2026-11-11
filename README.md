@@ -1,6 +1,28 @@
 # agent-relay
 
-Claude Code → OpenAI Codex: Claude runs Codex threads on any model and effort, sees them running, and gets each turn's answer messaged back. It never impersonates the person.
+A Claude Code plugin that lets Claude launch OpenAI Codex subagents on any model and effort.
+
+- Each run is a real Codex thread, so its history opens in the Codex app or in Claude Desktop.
+- Claude Desktop shows each subagent's state while it runs: a band above the prompt, the status line, a running task.
+- When a turn ends, Codex's final answer is messaged back to whichever Claude dispatched it.
+
+![Architecture: Claude dispatches through the bridge to the Codex App Server; the mod shows state and spawns a watcher that messages the answer back](docs/architecture.svg)
+
+## Install
+
+Requires `uv`, Python ≥ 3.11 (uv fetches it), and `codex` ≥ 0.166 with its app-server daemon running. The Codex app runs it, or start it with `codex app-server daemon start`.
+
+```bash
+claude plugin marketplace add garrettf/agent-relay
+```
+
+```bash
+claude plugin install codex-relay@agent-relay --scope user
+```
+
+Then start a new session. Or, from a Claude Code prompt: `/plugin marketplace add garrettf/agent-relay`, then `/plugin install codex-relay@agent-relay`.
+
+## How it works
 
 `claude-plugin/` is one Claude Code plugin, `codex-relay`, with two parts:
 
@@ -16,19 +38,4 @@ Claude Code → OpenAI Codex: Claude runs Codex threads on any model and effort,
   - Each dispatched turn gets a watcher subagent, which shows as a running task. Its wait is a `$.http.fetch` the bridge's events socket holds open, re-armed every 25s (the fetch's 30s cap). When the turn ends, it `SendMessage`s the dispatcher (main, or the subagent that dispatched it) Codex's final answer, which wakes an idle main.
   - A prompt that names a Codex model ("kick off a luna medium subagent …") carries a note that routes it to `create_thread`, not the Agent tool.
 
-```
-Claude ─create_thread─► codex-thread-bridge (MCP) ─ws/UDS─► Codex App Server daemon
-  ▲                         │ events socket                    │ turn/completed (push)
-  │                         ▼                                  │
-  └─SendMessage── watcher subagent ◄── $.http.fetch held ◄─────┘
-```
-
 **Why a watcher agent:** a real agent's SendMessage is the only way a mod can start a turn on an idle main conversation without writing a user-role row. MCP channels would do this natively, but Claude Desktop runs sessions in SDK mode, where channels are off.
-
-Requires `uv`, Python ≥ 3.11 (uv fetches it), and `codex` ≥ 0.166 with its app-server daemon running. The Codex app runs it, or start it with `codex app-server daemon start`.
-
-Install, at a Claude Code terminal prompt:
-
-```
-/plugin install codex-relay --marketplace <owner>/agent-relay
-```

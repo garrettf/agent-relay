@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 930 440" width="930" height="440" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <style>
+    :root { --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #8c959f; --box: #f6f8fa; --edge: #d0d7de; --claude: #fbf0eb; --claude-edge: #d97757; --codex: #eef3fb; --codex-edge: #4c7bd9; --mod: #fff8e1; --mod-edge: #c69026; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #6e7681; --box: #161b22; --edge: #30363d; --claude: #2a1c16; --claude-edge: #d97757; --codex: #141d2e; --codex-edge: #6d96e8; --mod: #2a2412; --mod-edge: #d4a72c; }
+    }
+    .bg { fill: var(--bg); }
+    .group { fill: none; stroke: var(--edge); stroke-dasharray: 5 4; }
+    .claude { fill: var(--claude); stroke: var(--claude-edge); }
+    .mod { fill: var(--mod); stroke: var(--mod-edge); }
+    .codex { fill: var(--codex); stroke: var(--codex-edge); }
+    .t { fill: var(--fg); font-size: 14px; font-weight: 600; }
+    .s { fill: var(--muted); font-size: 12px; }
+    .g { fill: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; }
+    .l { fill: var(--fg); font-size: 11.5px; }
+    .m { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .a { fill: none; stroke: var(--line); stroke-width: 1.5; marker-end: url(#arrow); }
+    .push { stroke-dasharray: 4 3; }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--line)"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="930" height="440"/>
+
+  <!-- Claude side -->
+  <rect class="group" x="16" y="16" width="420" height="408" rx="10"/>
+  <text class="g" x="32" y="38">CLAUDE CODE / DESKTOP SESSION</text>
+
+  <rect class="claude" x="70" y="52" width="350" height="64" rx="8"/>
+  <text class="t" x="86" y="78">Claude (main or a subagent)</text>
+  <text class="s" x="86" y="98">dispatches Codex work, gets answers back</text>
+
+  <rect class="mod" x="70" y="178" width="350" height="88" rx="8"/>
+  <text class="t" x="86" y="203">Mod <tspan class="m" font-weight="400" font-size="12">hooks/register.tsx</tspan></text>
+  <text class="s" x="86" y="222">band: running + recent turns, Open in Codex</text>
+  <text class="s" x="86" y="239">status line · routes Codex prompts to create_thread</text>
+  <text class="s" x="86" y="256">spawns a watcher per dispatched turn</text>
+
+  <rect class="claude" x="70" y="340" width="350" height="64" rx="8"/>
+  <text class="t" x="86" y="366">Watcher subagent</text>
+  <text class="s" x="86" y="386">one per turn, shows as a running task</text>
+
+  <!-- Claude-side arrows -->
+  <path class="a" d="M150,116 V176"/>
+  <text class="l" x="158" y="146">tool.call / prompt hooks</text>
+  <path class="a" d="M360,178 V118"/>
+  <text class="l" x="368" y="146">UI</text>
+  <path class="a" d="M245,266 V338"/>
+  <text class="l" x="253" y="306"><tspan class="m">$.agent.spawn</tspan></text>
+  <path class="a" d="M70,372 H44 V84 H68"/>
+  <text class="l" x="38" y="228" transform="rotate(-90 38 228)" text-anchor="middle">SendMessage(final answer)</text>
+
+  <!-- Codex side -->
+  <rect class="group" x="526" y="16" width="388" height="408" rx="10"/>
+  <text class="g" x="542" y="38">CODEX</text>
+
+  <rect class="codex" x="550" y="52" width="340" height="64" rx="8"/>
+  <text class="t" x="566" y="78">codex-thread-bridge <tspan class="s" font-weight="400">(MCP)</tspan></text>
+  <text class="s" x="566" y="98">create_thread, send_message…, events socket</text>
+
+  <rect class="codex" x="550" y="196" width="340" height="64" rx="8"/>
+  <text class="t" x="566" y="222">Codex App Server daemon</text>
+  <text class="s" x="566" y="242">runs turns on any model + effort</text>
+
+  <rect class="codex" x="550" y="340" width="340" height="64" rx="8"/>
+  <text class="t" x="566" y="366">Codex app</text>
+  <text class="s" x="566" y="386">full thread history</text>
+
+  <!-- Codex-side arrows -->
+  <path class="a" d="M670,116 V194"/>
+  <text class="l" x="662" y="160" text-anchor="end">ws / UDS</text>
+  <path class="a push" d="M790,196 V118"/>
+  <text class="l" x="798" y="160">turn/completed</text>
+  <path class="a" d="M720,260 V338"/>
+  <text class="l" x="728" y="304">shared threads</text>
+
+  <!-- Cross arrows -->
+  <path class="a" d="M420,74 H548"/>
+  <text class="l m" x="484" y="66" text-anchor="middle">create_thread</text>
+  <path class="a" d="M420,360 H470 V100 H548"/>
+  <text class="l" x="463" y="172" transform="rotate(-90 463 172)" text-anchor="middle">GET /wait (held open)</text>
+  <path class="a push" d="M420,250 C500,250 470,385 548,385"/>
+  <text class="l" x="552" y="332">Open in Codex (<tspan class="m">codex://</tspan>)</text>
+</svg>
