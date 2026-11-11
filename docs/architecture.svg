@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 280" width="680" height="280" role="img" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 256" width="680" height="256" role="img" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
   <title>codex-relay flow</title>
   <desc>1 Claude calls create_thread on the bridge, 2 the bridge starts the turn on the Codex App Server, 3 the mod's hook sees the call and spawns a watcher, 4 the watcher waits on the bridge, 5 the App Server pushes turn/completed to the bridge, which answers the wait, 6 the watcher messages the answer to Claude.</desc>
   <style>
@@ -26,7 +26,7 @@
     .ts { font-size: 12px; }
   </style>
   <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#888780" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
-  <rect class="bg" width="680" height="280"/>
+  <rect class="bg" width="680" height="256"/>
 
   <rect class="claude" x="40" y="50" width="150" height="56" rx="8" stroke-width="0.75"/>
   <text class="th claude-t" x="115" y="69" text-anchor="middle" dominant-baseline="central">Claude</text>
@@ -62,5 +62,4 @@
   <text class="ts l" x="348" y="141">4 wait</text>
   <line class="d" x1="565" y1="108" x2="565" y2="168"/>
   <text class="ts l" x="573" y="141">same thread</text>
-  <text class="ts l" x="340" y="256" text-anchor="middle">Arrows point from whoever starts the exchange</text>
 </svg>
