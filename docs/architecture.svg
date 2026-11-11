@@ -1,87 +1,66 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 930 440" width="930" height="440" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 280" width="680" height="280" role="img" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>codex-relay flow</title>
+  <desc>1 Claude calls create_thread on the bridge, 2 the bridge starts the turn on the Codex App Server, 3 the mod's hook sees the call and spawns a watcher, 4 the watcher waits on the bridge, 5 the App Server pushes turn/completed to the bridge, which answers the wait, 6 the watcher messages the answer to Claude.</desc>
   <style>
-    :root { --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #8c959f; --box: #f6f8fa; --edge: #d0d7de; --claude: #fbf0eb; --claude-edge: #d97757; --codex: #eef3fb; --codex-edge: #4c7bd9; --mod: #fff8e1; --mod-edge: #c69026; }
+    .bg { fill: #ffffff; }
+    .claude { fill: #FAECE7; stroke: #993C1D; }
+    .codex { fill: #F1EFE8; stroke: #5F5E5A; }
+    .claude-t { fill: #712B13; } .claude-s { fill: #993C1D; }
+    .codex-t { fill: #444441; } .codex-s { fill: #5F5E5A; }
+    .l { fill: #5F5E5A; }
+    .cx { fill: #EEEDFE; stroke: #534AB7; }
+    .cx-t { fill: #3C3489; } .cx-s { fill: #534AB7; }
+    .a { stroke: #888780; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+    .d { stroke: #888780; stroke-width: 1; stroke-dasharray: 4 3; fill: none; }
     @media (prefers-color-scheme: dark) {
-      :root { --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #6e7681; --box: #161b22; --edge: #30363d; --claude: #2a1c16; --claude-edge: #d97757; --codex: #141d2e; --codex-edge: #6d96e8; --mod: #2a2412; --mod-edge: #d4a72c; }
+      .bg { fill: #0d1117; }
+      .claude { fill: #712B13; stroke: #F0997B; }
+      .codex { fill: #444441; stroke: #B4B2A9; }
+      .claude-t { fill: #FAECE7; } .claude-s { fill: #F5C4B3; }
+      .codex-t { fill: #F1EFE8; } .codex-s { fill: #D3D1C7; }
+      .l { fill: #B4B2A9; }
+      .cx { fill: #3C3489; stroke: #AFA9EC; }
+      .cx-t { fill: #EEEDFE; } .cx-s { fill: #CECBF6; }
     }
-    .bg { fill: var(--bg); }
-    .group { fill: none; stroke: var(--edge); stroke-dasharray: 5 4; }
-    .claude { fill: var(--claude); stroke: var(--claude-edge); }
-    .mod { fill: var(--mod); stroke: var(--mod-edge); }
-    .codex { fill: var(--codex); stroke: var(--codex-edge); }
-    .t { fill: var(--fg); font-size: 14px; font-weight: 600; }
-    .s { fill: var(--muted); font-size: 12px; }
-    .g { fill: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; }
-    .l { fill: var(--fg); font-size: 11.5px; }
-    .m { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .a { fill: none; stroke: var(--line); stroke-width: 1.5; marker-end: url(#arrow); }
-    .push { stroke-dasharray: 4 3; }
+    .th { font-size: 14px; font-weight: 600; }
+    .ts { font-size: 12px; }
   </style>
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="var(--line)"/>
-    </marker>
-  </defs>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#888780" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+  <rect class="bg" width="680" height="280"/>
 
-  <rect class="bg" width="930" height="440"/>
+  <rect class="claude" x="40" y="50" width="150" height="56" rx="8" stroke-width="0.75"/>
+  <text class="th claude-t" x="115" y="69" text-anchor="middle" dominant-baseline="central">Claude</text>
+  <text class="ts claude-s" x="115" y="88" text-anchor="middle" dominant-baseline="central">main or subagent</text>
 
-  <!-- Claude side -->
-  <rect class="group" x="16" y="16" width="420" height="408" rx="10"/>
-  <text class="g" x="32" y="38">CLAUDE CODE / DESKTOP SESSION</text>
+  <rect class="codex" x="265" y="50" width="150" height="56" rx="8" stroke-width="0.75"/>
+  <text class="th codex-t" x="340" y="69" text-anchor="middle" dominant-baseline="central">Bridge</text>
+  <text class="ts codex-s" x="340" y="88" text-anchor="middle" dominant-baseline="central">MCP server</text>
 
-  <rect class="claude" x="70" y="52" width="350" height="64" rx="8"/>
-  <text class="t" x="86" y="78">Claude (main or a subagent)</text>
-  <text class="s" x="86" y="98">dispatches Codex work, gets answers back</text>
+  <rect class="cx" x="490" y="50" width="150" height="56" rx="8" stroke-width="0.75"/>
+  <text class="th cx-t" x="565" y="69" text-anchor="middle" dominant-baseline="central">Codex App Server</text>
+  <text class="ts cx-s" x="565" y="88" text-anchor="middle" dominant-baseline="central">runs the turn</text>
 
-  <rect class="mod" x="70" y="178" width="350" height="88" rx="8"/>
-  <text class="t" x="86" y="203">Mod <tspan class="m" font-weight="400" font-size="12">hooks/register.tsx</tspan></text>
-  <text class="s" x="86" y="222">band: running + recent turns, Open in Codex</text>
-  <text class="s" x="86" y="239">status line · routes Codex prompts to create_thread</text>
-  <text class="s" x="86" y="256">spawns a watcher per dispatched turn</text>
+  <rect class="claude" x="40" y="170" width="375" height="56" rx="8" stroke-width="0.75"/>
+  <text class="th claude-t" x="227" y="189" text-anchor="middle" dominant-baseline="central">Mod</text>
+  <text class="ts claude-s" x="227" y="208" text-anchor="middle" dominant-baseline="central">Desktop band + a watcher subagent per turn</text>
 
-  <rect class="claude" x="70" y="340" width="350" height="64" rx="8"/>
-  <text class="t" x="86" y="366">Watcher subagent</text>
-  <text class="s" x="86" y="386">one per turn, shows as a running task</text>
+  <rect class="cx" x="490" y="170" width="150" height="56" rx="8" stroke-width="0.75"/>
+  <text class="th cx-t" x="565" y="189" text-anchor="middle" dominant-baseline="central">Codex app</text>
+  <text class="ts cx-s" x="565" y="208" text-anchor="middle" dominant-baseline="central">full history</text>
 
-  <!-- Claude-side arrows -->
-  <path class="a" d="M150,116 V176"/>
-  <text class="l" x="158" y="146">tool.call / prompt hooks</text>
-  <path class="a" d="M360,178 V118"/>
-  <text class="l" x="368" y="146">UI</text>
-  <path class="a" d="M245,266 V338"/>
-  <text class="l" x="253" y="306"><tspan class="m">$.agent.spawn</tspan></text>
-  <path class="a" d="M70,372 H44 V84 H68"/>
-  <text class="l" x="38" y="228" transform="rotate(-90 38 228)" text-anchor="middle">SendMessage(final answer)</text>
-
-  <!-- Codex side -->
-  <rect class="group" x="526" y="16" width="388" height="408" rx="10"/>
-  <text class="g" x="542" y="38">CODEX</text>
-
-  <rect class="codex" x="550" y="52" width="340" height="64" rx="8"/>
-  <text class="t" x="566" y="78">codex-thread-bridge <tspan class="s" font-weight="400">(MCP)</tspan></text>
-  <text class="s" x="566" y="98">create_thread, send_message…, events socket</text>
-
-  <rect class="codex" x="550" y="196" width="340" height="64" rx="8"/>
-  <text class="t" x="566" y="222">Codex App Server daemon</text>
-  <text class="s" x="566" y="242">runs turns on any model + effort</text>
-
-  <rect class="codex" x="550" y="340" width="340" height="64" rx="8"/>
-  <text class="t" x="566" y="366">Codex app</text>
-  <text class="s" x="566" y="386">full thread history</text>
-
-  <!-- Codex-side arrows -->
-  <path class="a" d="M670,116 V194"/>
-  <text class="l" x="662" y="160" text-anchor="end">ws / UDS</text>
-  <path class="a push" d="M790,196 V118"/>
-  <text class="l" x="798" y="160">turn/completed</text>
-  <path class="a" d="M720,260 V338"/>
-  <text class="l" x="728" y="304">shared threads</text>
-
-  <!-- Cross arrows -->
-  <path class="a" d="M420,74 H548"/>
-  <text class="l m" x="484" y="66" text-anchor="middle">create_thread</text>
-  <path class="a" d="M420,360 H470 V100 H548"/>
-  <text class="l" x="463" y="172" transform="rotate(-90 463 172)" text-anchor="middle">GET /wait (held open)</text>
-  <path class="a push" d="M420,250 C500,250 470,385 548,385"/>
-  <text class="l" x="552" y="332">Open in Codex (<tspan class="m">codex://</tspan>)</text>
+  <line class="a" x1="192" y1="78" x2="261" y2="78"/>
+  <text class="ts l" x="227" y="68" text-anchor="middle">1 call</text>
+  <line class="a" x1="417" y1="68" x2="486" y2="68"/>
+  <text class="ts l" x="452" y="58" text-anchor="middle">2 start</text>
+  <line class="a" x1="488" y1="88" x2="419" y2="88"/>
+  <text class="ts l" x="452" y="104" text-anchor="middle">5 done</text>
+  <line class="a" x1="80" y1="108" x2="80" y2="166"/>
+  <text class="ts l" x="88" y="141">3 hook</text>
+  <line class="a" x1="150" y1="168" x2="150" y2="110"/>
+  <text class="ts l" x="158" y="141">6 answer</text>
+  <line class="a" x1="340" y1="168" x2="340" y2="110"/>
+  <text class="ts l" x="348" y="141">4 wait</text>
+  <line class="d" x1="565" y1="108" x2="565" y2="168"/>
+  <text class="ts l" x="573" y="141">same thread</text>
+  <text class="ts l" x="340" y="256" text-anchor="middle">Arrows point from whoever starts the exchange</text>
 </svg>

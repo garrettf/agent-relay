@@ -6,7 +6,7 @@ A Claude Code plugin that lets Claude launch OpenAI Codex subagents on any model
 - Claude Desktop shows each subagent's state while it runs: a band above the prompt, the status line, a running task.
 - When a turn ends, Codex's final answer is messaged back to whichever Claude dispatched it.
 
-![Architecture: Claude dispatches through the bridge to the Codex App Server; the mod shows state and spawns a watcher that messages the answer back](docs/architecture.svg)
+![1 Claude calls create_thread, 2 the bridge starts the Codex turn, 3 the mod hooks the call and spawns a watcher, 4 the watcher waits on the bridge, 5 the App Server reports done, 6 the watcher messages Claude the answer](docs/architecture.svg)
 
 ## Install
 
